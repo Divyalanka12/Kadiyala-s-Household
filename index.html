@@ -344,15 +344,40 @@
   .rate-box input { font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--page-plane); color: var(--text-primary); width: 130px; }
 
   @media (max-width: 860px) {
-    .app-shell { flex-direction: column; }
+    /* .app-shell's base rule sets align-items:flex-start for the desktop
+       ROW layout (so the sticky sidebar doesn't stretch full-height).
+       That property's meaning flips once flex-direction becomes column
+       here — it then controls horizontal sizing instead, so nav.sidebar
+       and main.content stop stretching to full width and shrink to fit
+       their own content instead, ballooning the whole page sideways.
+       Restoring "stretch" is what actually makes phones respect 100%
+       width for the stacked layout. */
+    .app-shell { flex-direction: column; align-items: stretch; }
     nav.sidebar {
-      width: 100%; flex-direction: row; overflow-x: auto; position: static;
+      width: 100%; min-width: 0; flex-direction: row; overflow-x: auto; position: static;
       border-bottom: 1px solid var(--gridline); padding: 10px 12px; gap: 4px;
     }
     nav.sidebar button { white-space: nowrap; width: auto; }
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
-    .grid-2, .grid-2-even { grid-template-columns: 1fr; }
+    /* !important beats the per-instance inline grid-template-columns the JS
+       sets on individual .stat-grid elements (e.g. style="repeat(3,1fr)") —
+       without it, those inline styles win and phones still see squished
+       3-4 column stat grids no matter what this media query says. */
+    .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .grid-2, .grid-2-even { grid-template-columns: 1fr !important; }
     main.content { padding: 16px; }
+    /* Tables (e.g. the 7-column shift log) can be wider than a phone
+       screen. Instead of letting body's overflow-x:hidden silently clip
+       columns off the edge, make each card scroll horizontally so every
+       column stays reachable. */
+    .card { overflow-x: auto; }
+    table { min-width: 480px; }
+    form.inline-form input, form.inline-form select { min-width: 100px; }
+  }
+
+  @media (max-width: 480px) {
+    .stat-grid { grid-template-columns: repeat(1, 1fr) !important; }
+    header.top h1 { font-size: 19px; }
+    .donut { width: 140px; height: 140px; }
   }
 
   #appRoot.locked { display: none; }
