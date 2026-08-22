@@ -15,6 +15,7 @@
 <style>
   :root {
     color-scheme: light;
+    --header-h: 108px; /* fallback until JS measures the real header height */
     --surface-1:      #fcfcfb;
     --page-plane:     #f9f9f7;
     --text-primary:   #0b0b0b;
@@ -125,7 +126,11 @@
     display: flex; align-items: center; justify-content: space-between;
     flex-wrap: wrap; gap: 12px;
     padding: 22px 26px;
-    position: relative; z-index: 2;
+    /* Higher than nav.sidebar (500) and .sidebar-overlay (499): the title
+       dropdown menu lives inside the header but its open panel extends
+       down into the space where the sidebar/overlay sit, and needs to
+       render above both regardless of whether the sidebar is pinned. */
+    position: relative; z-index: 501;
     background: linear-gradient(120deg, #ff5da2 0%, #ff8a5c 35%, #f2b705 65%, #12b886 100%);
     background-size: 200% 200%;
     animation: headerShimmer 14s ease-in-out infinite alternate;
@@ -155,10 +160,49 @@
   }
   header.top h1 { font-size: 23px; margin: 0; font-weight: 800; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.15); letter-spacing: -0.01em; }
   header.top .sub { color: rgba(255,255,255,0.92); font-size: 13px; margin-top: 2px; font-weight: 600; }
-  .top-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items:center; }
-  .top-actions button { background: rgba(255,255,255,0.92); border-color: rgba(255,255,255,0.5); color: #262521; }
-  .top-actions button.danger-btn { color: #c81e5c; }
-  .top-actions button:hover { background: #fff; }
+  .header-left { display: flex; align-items: flex-start; gap: 12px; }
+
+  .menu-toggle {
+    background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.4);
+    color: #fff; font-size: 18px; line-height: 1; padding: 9px 12px;
+    border-radius: 10px; flex-shrink: 0; margin-top: 2px;
+  }
+  .menu-toggle:hover { background: rgba(255,255,255,0.34); }
+
+  .title-btn {
+    background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; text-align: left;
+  }
+  .title-btn:hover { transform: none; border-color: transparent; }
+  .title-btn:hover h1 { text-decoration: underline; text-underline-offset: 4px; }
+  .title-btn .chev { color: rgba(255,255,255,0.85); font-size: 13px; }
+
+  .title-area { position: relative; }
+  .title-menu {
+    position: absolute; top: calc(100% + 10px); left: 0; z-index: 60;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 8px; min-width: 200px;
+    box-shadow: 0 16px 40px -12px rgba(0,0,0,0.35);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  /* Author styles beat the browser's default [hidden]{display:none} rule,
+     so the "display:flex" above would otherwise keep this dropdown visible
+     even while its `hidden` attribute is set. This explicit override is what
+     actually lets the JS-toggled `hidden` attribute hide it. */
+  .title-menu[hidden] { display: none; }
+  .title-menu button {
+    width: 100%; justify-content: flex-start; background: none; border: none;
+    text-align: left; padding: 9px 10px; border-radius: 8px;
+  }
+  .title-menu button:hover { background: var(--page-plane); transform: none; }
+  .title-menu button.danger-btn { color: var(--danger); }
+
+  .sidebar-overlay {
+    position: fixed; top: var(--header-h); left: 0; right: 0; bottom: 0;
+    background: rgba(11,11,11,0.42);
+    z-index: 499; opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
 
   button, .btn {
     font-family: inherit; font-size: 13px; font-weight: 600;
@@ -179,23 +223,57 @@
 
   .app-shell { display: flex; align-items: flex-start; max-width: 1280px; margin: 0 auto; }
 
+  /* Sidebar is a hidden-by-default slide-in drawer, opened via the ☰ button
+     in the header. It only becomes a permanent docked column (pushing the
+     content over, like before) once the user pins it with the 📌 button. */
   nav.sidebar {
-    width: 220px; flex-shrink: 0; padding: 20px 12px; position: sticky; top: 0;
+    width: 250px; flex-shrink: 0; padding: 16px 12px 20px;
     display: flex; flex-direction: column; gap: 2px;
     background: var(--sidebar-glass);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border-right: 1px solid var(--border);
+    /* Starts below the header (not top:0) so the sidebar — whether it's a
+       temporary drawer or permanently pinned — never covers the ☰ button
+       or title dropdown up there. */
+    position: fixed; top: var(--header-h); left: 0;
+    height: calc(100vh - var(--header-h)); overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    z-index: 500;
   }
-  nav.sidebar button {
+  nav.sidebar.open { transform: translateX(0); box-shadow: 10px 0 34px rgba(0,0,0,0.22); }
+
+  .sidebar-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 4px 12px; margin-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .sidebar-head .sidebar-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+  .pin-btn {
+    width: auto; flex-shrink: 0; margin-left: auto;
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 5px 8px; font-size: 13px; color: var(--text-secondary);
+  }
+  .pin-btn:hover { transform: none; background: var(--page-plane); }
+  .pin-btn.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+
+  /* Pinned: sidebar stays fixed (so it never scrolls away) but is forced
+     visible regardless of the "open" class, and main.content gets a
+     matching left margin so it doesn't sit underneath it. This is
+     essentially the app's original always-visible sidebar layout. */
+  body.sidebar-pinned nav.sidebar { transform: none; box-shadow: none; }
+  body.sidebar-pinned .sidebar-overlay { display: none; }
+  body.sidebar-pinned main.content { margin-left: 250px; }
+
+  nav.sidebar button[data-tab] {
     display: flex; align-items: center; gap: 10px;
     text-align: left; border: none; background: none; border-radius: 8px;
     padding: 11px 12px; color: var(--text-secondary); font-size: 14px; font-weight: 600;
     width: 100%;
   }
   nav.sidebar button .ic { font-size: 15px; width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  nav.sidebar button.active { color: #fff; background: var(--series-1); }
-  nav.sidebar button:not(.active):hover { background: var(--surface-1); color: var(--text-primary); }
+  nav.sidebar button[data-tab].active { color: #fff; background: var(--series-1); }
+  nav.sidebar button[data-tab]:not(.active):hover { background: var(--surface-1); color: var(--text-primary); }
   nav.sidebar button[data-tab="dashboard"] .ic { background: rgba(255,93,162,0.16); }
   nav.sidebar button[data-tab="expense"] .ic   { background: rgba(255,122,69,0.16); }
   nav.sidebar button[data-tab="job"] .ic       { background: rgba(18,184,134,0.16); }
@@ -344,20 +422,6 @@
   .rate-box input { font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--page-plane); color: var(--text-primary); width: 130px; }
 
   @media (max-width: 860px) {
-    /* .app-shell's base rule sets align-items:flex-start for the desktop
-       ROW layout (so the sticky sidebar doesn't stretch full-height).
-       That property's meaning flips once flex-direction becomes column
-       here — it then controls horizontal sizing instead, so nav.sidebar
-       and main.content stop stretching to full width and shrink to fit
-       their own content instead, ballooning the whole page sideways.
-       Restoring "stretch" is what actually makes phones respect 100%
-       width for the stacked layout. */
-    .app-shell { flex-direction: column; align-items: stretch; }
-    nav.sidebar {
-      width: 100%; min-width: 0; flex-direction: row; overflow-x: auto; position: static;
-      border-bottom: 1px solid var(--gridline); padding: 10px 12px; gap: 4px;
-    }
-    nav.sidebar button { white-space: nowrap; width: auto; }
     /* !important beats the per-instance inline grid-template-columns the JS
        sets on individual .stat-grid elements (e.g. style="repeat(3,1fr)") —
        without it, those inline styles win and phones still see squished
@@ -372,6 +436,12 @@
     .card { overflow-x: auto; }
     table { min-width: 480px; }
     form.inline-form input, form.inline-form select { min-width: 100px; }
+    nav.sidebar { width: 82vw; max-width: 300px; }
+    .title-menu { left: auto; right: 0; }
+    /* On a narrow phone there's no room to permanently reserve 250px for a
+       docked sidebar — pinning there just keeps it open on top of the
+       content (like an always-open drawer) instead of squeezing things. */
+    body.sidebar-pinned main.content { margin-left: 0; }
   }
 
   @media (max-width: 480px) {
@@ -496,18 +566,24 @@
   <div id="appRoot" class="locked">
 
   <header class="top">
-    <div>
-      <h1>🏡 Kadiyala's Household</h1>
-      <div class="sub" id="todayLabel"></div>
-      <div class="sub" id="cloudStatusLabel">☁ Connecting…</div>
-    </div>
-    <div class="top-actions">
-      <button id="themeToggle" title="Toggle dark mode">🌓 Theme</button>
-      <button id="exportBtn">⬇ Export data</button>
-      <button id="importBtn">⬆ Import data</button>
-      <input type="file" id="importFile" accept="application/json">
-      <button id="resetBtn" class="danger-btn">🗑 Reset all data</button>
-      <button id="lockBtn" title="Lock this app again">🔒 Lock</button>
+    <div class="header-left">
+      <button type="button" id="menuToggle" class="menu-toggle" title="Open menu" aria-label="Open menu">☰</button>
+      <div class="title-area">
+        <button type="button" id="titleMenuBtn" class="title-btn" aria-haspopup="true" aria-expanded="false">
+          <h1>🏡 Kadiyala's Household</h1>
+          <span class="chev">▾</span>
+        </button>
+        <div class="sub" id="todayLabel"></div>
+        <div class="sub" id="cloudStatusLabel">☁ Connecting…</div>
+        <div class="title-menu" id="titleMenu" hidden>
+          <button type="button" id="themeToggle" title="Toggle dark mode">🌓 Theme</button>
+          <button type="button" id="exportBtn">⬇ Export data</button>
+          <button type="button" id="importBtn">⬆ Import data</button>
+          <input type="file" id="importFile" accept="application/json">
+          <button type="button" id="resetBtn" class="danger-btn">🗑 Reset all data</button>
+          <button type="button" id="lockBtn" title="Lock this app again">🔒 Lock</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -516,8 +592,13 @@
     <button class="small" id="clearSampleBtn">Clear sample data &amp; start fresh</button>
   </div>
 
-  <div class="app-shell">
-    <nav class="sidebar">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <nav class="sidebar" id="sidebarNav">
+      <div class="sidebar-head">
+        <span class="sidebar-title">Menu</span>
+        <button type="button" id="pinSidebarBtn" class="pin-btn" title="Pin sidebar open">📌</button>
+      </div>
       <button data-tab="dashboard" class="active"><span class="ic">📊</span> Dashboard</button>
       <button data-tab="income"><span class="ic">💰</span> Income</button>
       <button data-tab="job"><span class="ic">💼</span> Part time Jobs</button>
@@ -526,8 +607,9 @@
       <button data-tab="chitti"><span class="ic">🪙</span> Chit Fund</button>
       <button data-tab="gold"><span class="ic">🥇</span> Gold</button>
       <button data-tab="report"><span class="ic">📑</span> Report</button>
-    </nav>
+  </nav>
 
+  <div class="app-shell">
     <main class="content">
 
       <!-- DASHBOARD -->
@@ -990,6 +1072,14 @@
       appRoot.classList.remove("locked");
       lockScreen.classList.add("hidden");
       resetIdleTimer();
+      // The header was display:none behind the lock screen, so anything that
+      // measured its height before now (--header-h, used to keep the sidebar
+      // drawer positioned below it) would have measured 0. Re-measure now
+      // that it's actually visible. (Inlined rather than calling
+      // updateHeaderHeightVar() directly, since that lives in a separate
+      // script block further down and may not be in scope here.)
+      var headerEl = document.querySelector("header.top");
+      if(headerEl){ document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px"); }
     }
 
     if(sessionStorage.getItem(PIN_UNLOCK_KEY) === "yes"){
@@ -1226,6 +1316,9 @@
     };
     el.textContent = labels[status] || "";
     el.style.color = (status === "error") ? "var(--danger)" : "";
+    // The error label is longer and can wrap to a second line, changing the
+    // header's height — keep the sidebar's top offset in sync when that happens.
+    if(typeof updateHeaderHeightVar === "function") updateHeaderHeightVar();
   };
   function blankState(){
     return { isSample:false, theme: state.theme, audInrRate: state.audInrRate, goldRates: state.goldRates, loanDetails: state.loanDetails,
@@ -1243,14 +1336,91 @@
   applyTheme();
 
   // ---------- SIDEBAR NAV ----------
-  var navButtons = document.querySelectorAll("nav.sidebar button");
+  // Scoped to [data-tab] only — nav.sidebar also now holds the pin button,
+  // which has no data-tab and must not be treated as a tab switch.
+  var navButtons = document.querySelectorAll("nav.sidebar button[data-tab]");
   navButtons.forEach(function(btn){
     btn.addEventListener("click", function(){
       navButtons.forEach(function(b){ b.classList.remove("active"); });
       btn.classList.add("active");
       document.querySelectorAll(".panel").forEach(function(p){ p.classList.remove("active"); });
       document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      closeSidebarDrawer(); // picking a page closes the drawer, unless it's pinned open
     });
+  });
+
+  // ---------- HEADER HEIGHT (keeps the sidebar/overlay below the header) ----------
+  // The real call happens at the very end of this script (after todayLabel /
+  // cloud status text are filled in) — measuring here would catch the header
+  // still one line short and undersize --header-h, leaving the sidebar
+  // overlapping the header until the next resize.
+  function updateHeaderHeightVar(){
+    var h = document.querySelector("header.top").offsetHeight;
+    document.documentElement.style.setProperty("--header-h", h + "px");
+  }
+  window.addEventListener("resize", updateHeaderHeightVar);
+
+  // ---------- SIDEBAR DRAWER (hamburger toggle + pin) ----------
+  var sidebarNav = document.getElementById("sidebarNav");
+  var sidebarOverlay = document.getElementById("sidebarOverlay");
+  var menuToggleBtn = document.getElementById("menuToggle");
+  var pinSidebarBtn = document.getElementById("pinSidebarBtn");
+  var SIDEBAR_PIN_KEY = "lankaHouseholdSidebarPinned_v1";
+
+  function isSidebarPinned(){ return document.body.classList.contains("sidebar-pinned"); }
+
+  function openSidebarDrawer(){
+    sidebarNav.classList.add("open");
+    sidebarOverlay.classList.add("open");
+  }
+  function closeSidebarDrawer(){
+    if(isSidebarPinned()) return; // pinned = always visible, nothing to close
+    sidebarNav.classList.remove("open");
+    sidebarOverlay.classList.remove("open");
+  }
+  function setSidebarPinned(pinned){
+    document.body.classList.toggle("sidebar-pinned", pinned);
+    localStorage.setItem(SIDEBAR_PIN_KEY, pinned ? "yes" : "no");
+    pinSidebarBtn.classList.toggle("active", pinned);
+    pinSidebarBtn.title = pinned ? "Unpin sidebar" : "Pin sidebar open";
+    if(!pinned){ closeSidebarDrawer(); }
+  }
+
+  menuToggleBtn.addEventListener("click", function(){
+    if(isSidebarPinned()){
+      setSidebarPinned(false); // hamburger also doubles as "hide it" while pinned
+    } else if(sidebarNav.classList.contains("open")){
+      closeSidebarDrawer();
+    } else {
+      openSidebarDrawer();
+    }
+  });
+  pinSidebarBtn.addEventListener("click", function(){ setSidebarPinned(!isSidebarPinned()); });
+  sidebarOverlay.addEventListener("click", closeSidebarDrawer);
+
+  if(localStorage.getItem(SIDEBAR_PIN_KEY) === "yes"){ setSidebarPinned(true); }
+
+  // ---------- TITLE MENU (Theme / Export / Import / Reset / Lock) ----------
+  var titleMenuBtn = document.getElementById("titleMenuBtn");
+  var titleMenu = document.getElementById("titleMenu");
+  function closeTitleMenu(){ titleMenu.hidden = true; titleMenuBtn.setAttribute("aria-expanded", "false"); }
+  titleMenuBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    var willOpen = titleMenu.hidden;
+    titleMenu.hidden = !willOpen;
+    titleMenuBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  });
+  document.addEventListener("click", function(e){
+    if(!titleMenu.hidden && !titleMenu.contains(e.target) && e.target !== titleMenuBtn && !titleMenuBtn.contains(e.target)){
+      closeTitleMenu();
+    }
+  });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape"){ closeTitleMenu(); closeSidebarDrawer(); }
+  });
+  // Any action inside the dropdown (theme/export/import/reset/lock) closes it afterwards.
+  titleMenu.querySelectorAll("button").forEach(function(btn){
+    btn.addEventListener("click", function(){ closeTitleMenu(); });
   });
 
   // ---------- HEADER: sample banner / export / import / reset ----------
@@ -2520,6 +2690,7 @@
   }
 
   renderAll();
+  updateHeaderHeightVar(); // header text (today's date, cloud status) is filled in by now
 })();
 </script>
 <script>
