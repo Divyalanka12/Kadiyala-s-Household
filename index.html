@@ -378,6 +378,74 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+  // ================= CLOUD SYNC (Firebase) =================
+  // Keeps the household's data in sync across every device/browser via a shared Firestore
+  // document, instead of each browser only knowing about its own local storage. The main
+  // app script (further down this page) calls into window.FT.pushState / listens via
+  // window.FT.applyRemoteState — see the "CLOUD SYNC (Firebase)" section in the main script.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyB9Wa37P9b_-xitRVoc7jLbFDYFz1nKAiI",
+    authDomain: "kadiyalas-household.firebaseapp.com",
+    projectId: "kadiyalas-household",
+    storageBucket: "kadiyalas-household.firebasestorage.app",
+    messagingSenderId: "454422091198",
+    appId: "1:454422091198:web:cd26244329abd960ded5ef"
+  };
+
+  var app = initializeApp(firebaseConfig);
+  var auth = getAuth(app);
+  var db = getFirestore(app);
+  var householdDocRef = doc(db, "households", "kadiyala");
+
+  window.FT = window.FT || {};
+  window.FT.cloudReady = false;
+
+  function setCloudStatus(status){
+    if(typeof window.FT.onCloudStatusChange === "function"){
+      window.FT.onCloudStatusChange(status);
+    }
+  }
+  setCloudStatus("connecting");
+
+  window.FT.pushState = function(stateObj){
+    if(!window.FT.cloudReady) return;
+    setDoc(householdDocRef, { data: JSON.stringify(stateObj) })
+      .then(function(){ setCloudStatus("synced"); })
+      .catch(function(err){ console.error("Cloud save failed:", err); setCloudStatus("error"); });
+  };
+
+  onAuthStateChanged(auth, function(user){
+    if(!user) return;
+    window.FT.cloudReady = true;
+
+    onSnapshot(householdDocRef, function(snap){
+      if(snap.exists()){
+        var remote = snap.data();
+        if(remote && remote.data && typeof window.FT.applyRemoteState === "function"){
+          try{ window.FT.applyRemoteState(JSON.parse(remote.data)); }
+          catch(e){ console.error("Could not apply cloud data:", e); }
+        }
+      } else if(typeof window.FT.getLocalStateForSeed === "function"){
+        // Nothing in the cloud yet — seed it with whatever's already on this device.
+        window.FT.pushState(window.FT.getLocalStateForSeed());
+      }
+      setCloudStatus("synced");
+    }, function(err){
+      console.error("Cloud sync error:", err);
+      setCloudStatus("error");
+    });
+  });
+
+  signInAnonymously(auth).catch(function(err){
+    console.error("Anonymous sign-in failed:", err);
+    setCloudStatus("error");
+  });
+</script>
 </head>
 <body>
 
@@ -398,6 +466,7 @@
     <div>
       <h1>🏡 Kadiyala's Household</h1>
       <div class="sub" id="todayLabel"></div>
+      <div class="sub" id="cloudStatusLabel">☁ Connecting…</div>
     </div>
     <div class="top-actions">
       <button id="themeToggle" title="Toggle dark mode">🌓 Theme</button>
@@ -831,22 +900,66 @@
   // Client-side only — a deterrent against a stray link or casual snooping, not real security
   // (anyone reading this file's source can see the PIN). Good enough to keep this off search
   // engines and away from people who don't have the PIN, since real numbers are baked into this file.
+  //
+  // Auto-lock: the unlock flag lives in sessionStorage (not localStorage), so closing the tab or
+  // browser clears it — the next visit needs the PIN again, even if nobody clicked "Lock" manually.
+  // Two extra timers re-lock it even while the tab stays open:
+  //  1. A 2-minute inactivity timer (no mouse/keyboard/touch/scroll) locks the whole app.
+  //  2. A 30-second "tab hidden" timer locks it fast if someone switches away/minimizes and
+  //     forgets to come back — this catches "walked away" sooner than waiting on the idle timer,
+  //     since background tabs get throttled and activity events don't fire while hidden anyway.
   (function(){
     var PIN_UNLOCK_KEY = "lankaHouseholdPinUnlocked_v1";
     var CORRECT_PIN = "518206";
+    var IDLE_LIMIT_MS = 2 * 60 * 1000;   // auto-lock after 2 minutes of no activity
+    var HIDDEN_LIMIT_MS = 30 * 1000;     // auto-lock after 30s of the tab being hidden/backgrounded
     var lockScreen = document.getElementById("pinLockScreen");
     var appRoot = document.getElementById("appRoot");
     var form = document.getElementById("pinLockForm");
     var input = document.getElementById("pinLockInput");
     var errBox = document.getElementById("pinLockError");
     var box = document.querySelector("#pinLockScreen .pin-box");
+    var idleTimer = null;
+    var hiddenTimer = null;
+
+    function doLock(){
+      sessionStorage.removeItem(PIN_UNLOCK_KEY);
+      appRoot.classList.add("locked");
+      lockScreen.classList.remove("hidden");
+      input.value = "";
+      errBox.textContent = "";
+      if(idleTimer){ clearTimeout(idleTimer); idleTimer = null; }
+      if(hiddenTimer){ clearTimeout(hiddenTimer); hiddenTimer = null; }
+    }
+
+    function resetIdleTimer(){
+      if(appRoot.classList.contains("locked")) return;
+      if(idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(doLock, IDLE_LIMIT_MS);
+    }
+
+    ["mousemove","keydown","mousedown","click","touchstart","scroll"].forEach(function(evt){
+      document.addEventListener(evt, resetIdleTimer, {passive:true});
+    });
+
+    document.addEventListener("visibilitychange", function(){
+      if(appRoot.classList.contains("locked")) return;
+      if(document.hidden){
+        if(hiddenTimer) clearTimeout(hiddenTimer);
+        hiddenTimer = setTimeout(doLock, HIDDEN_LIMIT_MS);
+      } else {
+        if(hiddenTimer){ clearTimeout(hiddenTimer); hiddenTimer = null; }
+        resetIdleTimer();
+      }
+    });
 
     function unlock(){
       appRoot.classList.remove("locked");
       lockScreen.classList.add("hidden");
+      resetIdleTimer();
     }
 
-    if(localStorage.getItem(PIN_UNLOCK_KEY) === "yes"){
+    if(sessionStorage.getItem(PIN_UNLOCK_KEY) === "yes"){
       unlock();
     } else if(input){
       input.focus();
@@ -855,11 +968,7 @@
     var lockBtn = document.getElementById("lockBtn");
     if(lockBtn){
       lockBtn.addEventListener("click", function(){
-        localStorage.removeItem(PIN_UNLOCK_KEY);
-        appRoot.classList.add("locked");
-        lockScreen.classList.remove("hidden");
-        input.value = "";
-        errBox.textContent = "";
+        doLock();
         input.focus();
       });
     }
@@ -868,7 +977,7 @@
       form.addEventListener("submit", function(e){
         e.preventDefault();
         if(input.value === CORRECT_PIN){
-          localStorage.setItem(PIN_UNLOCK_KEY, "yes");
+          sessionStorage.setItem(PIN_UNLOCK_KEY, "yes");
           errBox.textContent = "";
           unlock();
         } else {
@@ -1097,36 +1206,85 @@
     };
   }
 
+  function normalizeState(parsed){
+    parsed.expenses = parsed.expenses || [];
+    parsed.shifts = parsed.shifts || [];
+    parsed.petrolShifts = parsed.petrolShifts || [];
+    parsed.loanDetails = parsed.loanDetails || { termMonths: 48, interestTotal: 17581.56, totalRepayment: 53596.56, monthlyMinimum: 1117 };
+    parsed.loanEntries = parsed.loanEntries || [];
+    parsed.incomeEntries = parsed.incomeEntries || [];
+    parsed.chittis = fixedChittis(); // chitti types are fixed — never trust saved/stale data here
+    parsed.chittiPayments = parsed.chittiPayments || [];
+    parsed.chittiPayouts = parsed.chittiPayouts || [];
+    parsed.goldEntries = parsed.goldEntries || [];
+    parsed.goldTargets = parsed.goldTargets || [];
+    parsed.paymentsReceived = parsed.paymentsReceived || [];
+    parsed.petrolPaymentsReceived = parsed.petrolPaymentsReceived || [];
+    parsed.indiaTransfers = parsed.indiaTransfers || [];
+    parsed.audInrRate = parsed.audInrRate || 67.86;
+    parsed.goldRates = parsed.goldRates || { buy:0, sell:0, lastUpdated: todayISO() };
+    parsed.goldRateHistory = parsed.goldRateHistory || [];
+    return parsed;
+  }
+
   function loadState(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
-        var parsed = JSON.parse(raw);
-        parsed.expenses = parsed.expenses || [];
-        parsed.shifts = parsed.shifts || [];
-        parsed.petrolShifts = parsed.petrolShifts || [];
-        parsed.loanDetails = parsed.loanDetails || { termMonths: 48, interestTotal: 17581.56, totalRepayment: 53596.56, monthlyMinimum: 1117 };
-        parsed.loanEntries = parsed.loanEntries || [];
-        parsed.incomeEntries = parsed.incomeEntries || [];
-        parsed.chittis = fixedChittis(); // chitti types are fixed — never trust saved/stale data here
-        parsed.chittiPayments = parsed.chittiPayments || [];
-        parsed.chittiPayouts = parsed.chittiPayouts || [];
-        parsed.goldEntries = parsed.goldEntries || [];
-        parsed.goldTargets = parsed.goldTargets || [];
-        parsed.paymentsReceived = parsed.paymentsReceived || [];
-        parsed.petrolPaymentsReceived = parsed.petrolPaymentsReceived || [];
-        parsed.indiaTransfers = parsed.indiaTransfers || [];
-        parsed.audInrRate = parsed.audInrRate || 67.86;
-        parsed.goldRates = parsed.goldRates || { buy:0, sell:0, lastUpdated: todayISO() };
-        parsed.goldRateHistory = parsed.goldRateHistory || [];
-        return parsed;
+        return normalizeState(JSON.parse(raw));
       }
     }catch(e){ console.warn("Could not load saved data, starting fresh.", e); }
     return defaultState();
   }
 
   var state = loadState();
-  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  var suppressCloudPush = false;
+
+  // ================= CLOUD SYNC (Firebase) =================
+  // save() always writes to localStorage first (instant, works offline), then best-effort
+  // pushes the whole state to the shared Firestore document so it shows up on other devices.
+  // window.FT.pushState / applyRemoteState / getLocalStateForSeed are the hooks the Firebase
+  // <script type="module"> block (near the top of <head>) calls into.
+  window.FT.getLocalStateForSeed = function(){ return state; };
+
+  window.FT.applyRemoteState = function(remoteState){
+    if(!remoteState) return;
+    var localUpdatedAt = state.__updatedAt || 0;
+    var remoteUpdatedAt = remoteState.__updatedAt || 0;
+    if(remoteUpdatedAt > localUpdatedAt){
+      state = normalizeState(remoteState);
+      suppressCloudPush = true;
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        renderAll();
+      } finally {
+        suppressCloudPush = false;
+      }
+    } else if(remoteUpdatedAt < localUpdatedAt && typeof window.FT.pushState === "function"){
+      // Our local copy is newer (e.g. edits made before the cloud connection was ready) — push it up.
+      window.FT.pushState(state);
+    }
+  };
+
+  function save(){
+    state.__updatedAt = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if(!suppressCloudPush && typeof window.FT.pushState === "function"){
+      window.FT.pushState(state);
+    }
+  }
+
+  window.FT.onCloudStatusChange = function(status){
+    var el = document.getElementById("cloudStatusLabel");
+    if(!el) return;
+    var labels = {
+      connecting: "☁ Connecting…",
+      synced: "☁ Synced across devices",
+      error: "⚠ Cloud sync unavailable — saved on this device only"
+    };
+    el.textContent = labels[status] || "";
+    el.style.color = (status === "error") ? "var(--danger)" : "";
+  };
   function blankState(){
     return { isSample:false, theme: state.theme, audInrRate: state.audInrRate, goldRates: state.goldRates, loanDetails: state.loanDetails,
       expenses:[], shifts:[], petrolShifts:[], loanEntries:[], incomeEntries:[],
