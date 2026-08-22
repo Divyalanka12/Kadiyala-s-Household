@@ -1027,6 +1027,31 @@
   }
   function shiftAmount(s, job){ return shiftHours(s)*job.hourlyRate + (job.hasDeliveries ? (parseFloat(s.deliveries)||0)*job.deliveryRate : 0); }
 
+  // Plain hour/minute/AM-PM dropdowns instead of a native <input type="time">.
+  // Native time inputs behave inconsistently across browsers/OSes (locale-dependent
+  // segmented widgets that can throw a native "Invalid value" error mid-typing) —
+  // dropdowns can't ever hold an invalid value, so this sidesteps that entirely.
+  function timeSelectGroup(labelText, prefix){
+    var hourOpts = '<option value="" disabled selected>Hr</option>';
+    for(var h=1; h<=12; h++){ hourOpts += '<option value="'+h+'">'+h+'</option>'; }
+    var minOpts = '<option value="" disabled selected>Min</option>';
+    for(var m=0; m<60; m+=5){ var mm=(m<10?"0":"")+m; minOpts += '<option value="'+mm+'">'+mm+'</option>'; }
+    var ampmOpts = '<option value="" disabled selected>AM/PM</option><option value="AM">AM</option><option value="PM">PM</option>';
+    return '<div class="field"><label>'+labelText+'</label>' +
+      '<div style="display:flex; gap:4px;">' +
+        '<select name="'+prefix+'Hour" required style="min-width:56px;">'+hourOpts+'</select>' +
+        '<select name="'+prefix+'Minute" required style="min-width:60px;">'+minOpts+'</select>' +
+        '<select name="'+prefix+'AmPm" required style="min-width:68px;">'+ampmOpts+'</select>' +
+      '</div></div>';
+  }
+  // Combine 12-hour dropdown parts into the "HH:MM" 24-hour string the rest of the app expects.
+  function combineTimeParts(hour12, minute, ampm){
+    var h = parseInt(hour12, 10) || 0;
+    if(ampm === "AM"){ if(h === 12) h = 0; }
+    else { if(h !== 12) h += 12; }
+    return (h<10?"0":"")+h+":"+minute;
+  }
+
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
   function todayISO(){ var d = new Date(); return d.toISOString().slice(0,10); }
   function fmtAUD(n){
@@ -1071,138 +1096,22 @@
       isSample: false,
       theme: "light",
       audInrRate: 67.86,
-      goldRates: { buy: 132.5, sell: 127.8, lastUpdated: "2026-08-19" },
-      goldRateHistory: [
-        {id: "mt10rateh1", date: "2026-08-19", buy: 132.5, sell: 127.8}
-      ],
-      expenses: [
-        {id: "msztwpmfcmcy6e", date: "2026-08-19", category: "Food & Dining", description: "Chattime Boba", amount: 25, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztx5f3ifkabc", date: "2026-08-19", category: "Shopping", description: "Kmart - 2nd Job Outfit", amount: 41, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztxrhex6nz6g", date: "2026-08-19", category: "Transport", description: "Opal Fortnight", amount: 80, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszty31hsqcbsy", date: "2026-08-19", category: "Entertainment", description: "Spiderman Movie", amount: 31, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztyek6gjpaio", date: "2026-08-19", category: "India", description: "India monthly maintenance", amount: 602, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztysg025yixz", date: "2026-08-19", category: "Groceries", description: "Coles", amount: 48, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztz7tvqfg7k3", date: "2026-08-19", category: "Health & Fitness", description: "Cricket balls share", amount: 10, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztzlnsp3lkal", date: "2026-08-19", category: "Utilities", description: "Gas bill", amount: 180, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "msztzxd0yhthg1", date: "2026-08-19", category: "Housing & Rent", description: "Rent", amount: 900, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu0dcxwdehdm", date: "2026-08-19", category: "Subscriptions", description: "Prime & Netflix", amount: 20, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu0osk15iw01", date: "2026-08-19", category: "Food & Dining", description: "Data centre - burrito", amount: 12, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu116er29a1m", date: "2026-08-19", category: "Insurance", description: "NIB private health insurance", amount: 88, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu1bs27b4gqp", date: "2026-08-19", category: "Food & Dining", description: "KFC", amount: 23, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu24i8sdt5va", date: "2026-08-19", category: "Transport", description: "Windshield wipers and fluid", amount: 93, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu2m4u801zk9", date: "2026-08-19", category: "Transport", description: "Diesel", amount: 150, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu2xvbfzc1sr", date: "2026-08-19", category: "Gifts & Donations", description: "Yugi son birthday", amount: 56, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu386dp4znkh", date: "2026-08-19", category: "Entertainment", description: "Divya puzzles", amount: 15, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu3jdv7io9rd", date: "2026-08-19", category: "Subscriptions", description: "Kayo", amount: 30, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu3vu8uusbai", date: "2026-08-19", category: "Groceries", description: "Woolworths ( milk & drinks)", amount: 17.75, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu460vbed54p", date: "2026-08-19", category: "Food & Dining", description: "Sushi", amount: 14.13, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu4hq8bvlpcg", date: "2026-08-19", category: "Subscriptions", description: "icloud", amount: 4.49, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu4weu7dlvpx", date: "2026-08-19", category: "Travel & Holidays", description: "City to buy gold", amount: 5, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu5cjkenz655", date: "2026-08-19", category: "Groceries", description: "Fish & crab", amount: 56.29, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu5ng1nwg7vf", date: "2026-08-19", category: "Groceries", description: "Onions & spices", amount: 24.23, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu5xr15y1v49", date: "2026-08-19", category: "Food & Dining", description: "Hungry jacks", amount: 5.5, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu6ae267u0i9", date: "2026-08-19", category: "Utilities", description: "Electricity bill", amount: 272.06, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu6mkwb8xu6i", date: "2026-08-19", category: "Travel & Holidays", description: "Disel & vaccum", amount: 139, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu6yeniwgqlv", date: "2026-08-19", category: "Food & Dining", description: "Spinach croissant", amount: 4.45, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu7bnl21mcsg", date: "2026-08-19", category: "Groceries", description: "Woolworths watermelon", amount: 2, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu7y70re71zm", date: "2026-08-19", category: "Other", description: "Divya driving test", amount: 72, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu87prbjj53k", date: "2026-08-19", category: "Housing & Rent", description: "Rent", amount: 900, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu8hxzr4pbzh", date: "2026-08-19", category: "Food & Dining", description: "Sainath & me", amount: 30.33, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu8uqgwp638n", date: "2026-08-19", category: "Insurance", description: "NIB private health insurance", amount: 88, spentBy: "Ram", audInrRateAtEntry: 67.86},
-        {id: "mszu9arco88wg0", date: "2026-08-19", category: "India", description: "Chitti", amount: 1000, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszu9k2dh3ia3r", date: "2026-08-19", category: "Transport", description: "Train", amount: 12.4, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszu9sw22vad41", date: "2026-08-19", category: "Food & Dining", description: "Egg pie", amount: 3.95, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszua05oln20fe", date: "2026-08-19", category: "Transport", description: "Train", amount: 6, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszua88v6gzmg1", date: "2026-08-19", category: "Food & Dining", description: "Donut", amount: 12, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuaez9t7wq81", date: "2026-08-19", category: "Food & Dining", description: "Coffee - Ravi and Hung", amount: 8.53, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszual6pzpnqwf", date: "2026-08-19", category: "Food & Dining", description: "Coles", amount: 1.89, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuav5d3td2t9", date: "2026-08-19", category: "Personal Care", description: "Pads and mandarins", amount: 14.5, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszub1v42kryfx", date: "2026-08-19", category: "Food & Dining", description: "Sushi", amount: 6, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszub6f63aiwns", date: "2026-08-19", category: "Food & Dining", description: "Md soft serve", amount: 1, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszubd583jerxp", date: "2026-08-19", category: "Food & Dining", description: "Donut", amount: 2.75, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszubk3qypxx00", date: "2026-08-19", category: "Subscriptions", description: "Fucking Door Dash", amount: 10, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszubu4xdxzbpc", date: "2026-08-19", category: "Groceries", description: "Vegetables", amount: 46.5, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuc17x1j2318", date: "2026-08-19", category: "Groceries", description: "Chicken", amount: 9.5, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuc9muvjlmu7", date: "2026-08-19", category: "Food & Dining", description: "Coles coffee", amount: 5.25, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszucglob7skms", date: "2026-08-19", category: "Food & Dining", description: "Coffee", amount: 5.03, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszucolzy1aego", date: "2026-08-19", category: "Utilities", description: "Hyderabad TV", amount: 11.99, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszud27lmawm5d", date: "2026-08-19", category: "India", description: "Chitti", amount: 1000, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszud7z9shidn0", date: "2026-08-19", category: "India", description: "Chitti charges", amount: 2, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszudgv2paphab", date: "2026-08-19", category: "Transport", description: "Opal", amount: 80, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszue5lk9vrq9w", date: "2026-08-19", category: "Shopping", description: "Gold", amount: 1150.6, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuee9uyvram0", date: "2026-08-19", category: "Food & Dining", description: "Chicken roll", amount: 4.5, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuekweik5q7c", date: "2026-08-19", category: "Food & Dining", description: "Chocolate", amount: 2.59, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mszuesn4cfy3mi", date: "2026-08-19", category: "Subscriptions", description: "Claude Ai", amount: 34, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mt0u8qwxxykk1r", date: "2026-08-20", category: "Food & Dining", description: "Coles", amount: 3.15, spentBy: "Divya", audInrRateAtEntry: 67.86},
-        {id: "mt0vdg8bpqbjty", date: "2026-01-17", category: "India", description: "Jaunary", amount: 1000, spentBy: "Divya", audInrRateAtEntry: 61.15}
-      ],
-      shifts: [
-        {id: "mszup85uxdt65t", date: "2026-08-01", startTime: "17:00", endTime: "20:45", deliveries: 1},
-        {id: "mszupxqn9wypg5", date: "2026-08-02", startTime: "16:00", endTime: "20:30", deliveries: 6},
-        {id: "mszuxzo92rnus6", date: "2026-08-03", startTime: "17:00", endTime: "20:45", deliveries: 0},
-        {id: "mszuydgtazaf5i", date: "2026-08-07", startTime: "17:00", endTime: "20:45", deliveries: 5},
-        {id: "mszuyruhu73leg", date: "2026-08-08", startTime: "16:00", endTime: "20:45", deliveries: 3},
-        {id: "mszuz5pvat7hbd", date: "2026-08-09", startTime: "16:00", endTime: "20:30", deliveries: 1},
-        {id: "mszuzitc4bqht5", date: "2026-08-10", startTime: "17:00", endTime: "20:45", deliveries: 1},
-        {id: "mszuzvmutg5k0n", date: "2026-08-14", startTime: "17:00", endTime: "20:45", deliveries: 4},
-        {id: "mszv0eu4w8upz8", date: "2026-08-15", startTime: "16:00", endTime: "20:45", deliveries: 5},
-        {id: "mszv0ws0c96syu", date: "2026-08-16", startTime: "16:00", endTime: "20:30", deliveries: 1},
-        {id: "mszv1b232jb33d", date: "2026-08-17", startTime: "17:00", endTime: "20:45", deliveries: 1}
-      ],
-      loanDetails: { termMonths: 48, interestTotal: 17581.56, totalRepayment: 53596.56, monthlyMinimum: 1117 },
+      goldRates: {"buy": 10746, "sell": 0, "lastUpdated": "2026-08-22"},
+      goldRateHistory: [{"id": "mt3zelzntysuu3", "date": "2026-08-22", "buy": 10746, "sell": 0}],
+      expenses: [{"id": "msztwpmfcmcy6e", "date": "2026-08-19", "category": "Food & Dining", "description": "Chattime Boba", "amount": 25, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztx5f3ifkabc", "date": "2026-08-19", "category": "Shopping", "description": "Kmart - 2nd Job Outfit", "amount": 41, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztxrhex6nz6g", "date": "2026-08-19", "category": "Transport", "description": "Opal Fortnight", "amount": 80, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszty31hsqcbsy", "date": "2026-08-19", "category": "Entertainment", "description": "Spiderman Movie", "amount": 31, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztyek6gjpaio", "date": "2026-08-19", "category": "India", "description": "India monthly maintenance", "amount": 602, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztysg025yixz", "date": "2026-08-19", "category": "Groceries", "description": "Coles", "amount": 48, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztz7tvqfg7k3", "date": "2026-08-19", "category": "Health & Fitness", "description": "Cricket balls share", "amount": 10, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztzlnsp3lkal", "date": "2026-08-19", "category": "Utilities", "description": "Gas bill", "amount": 180, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "msztzxd0yhthg1", "date": "2026-08-19", "category": "Housing & Rent", "description": "Rent", "amount": 900, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu0dcxwdehdm", "date": "2026-08-19", "category": "Subscriptions", "description": "Prime & Netflix", "amount": 20, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu0osk15iw01", "date": "2026-08-19", "category": "Food & Dining", "description": "Data centre - burrito", "amount": 12, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu116er29a1m", "date": "2026-08-19", "category": "Insurance", "description": "NIB private health insurance", "amount": 88, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu1bs27b4gqp", "date": "2026-08-19", "category": "Food & Dining", "description": "KFC", "amount": 23, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu24i8sdt5va", "date": "2026-08-19", "category": "Transport", "description": "Windshield wipers and fluid", "amount": 93, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu2m4u801zk9", "date": "2026-08-19", "category": "Transport", "description": "Diesel", "amount": 150, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu2xvbfzc1sr", "date": "2026-08-19", "category": "Gifts & Donations", "description": "Yugi son birthday", "amount": 56, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu386dp4znkh", "date": "2026-08-19", "category": "Entertainment", "description": "Divya puzzles", "amount": 15, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu3jdv7io9rd", "date": "2026-08-19", "category": "Subscriptions", "description": "Kayo", "amount": 30, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu3vu8uusbai", "date": "2026-08-19", "category": "Groceries", "description": "Woolworths ( milk & drinks)", "amount": 17.75, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu460vbed54p", "date": "2026-08-19", "category": "Food & Dining", "description": "Sushi", "amount": 14.13, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu4hq8bvlpcg", "date": "2026-08-19", "category": "Subscriptions", "description": "icloud", "amount": 4.49, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu4weu7dlvpx", "date": "2026-08-19", "category": "Travel & Holidays", "description": "City to buy gold", "amount": 5, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu5cjkenz655", "date": "2026-08-19", "category": "Groceries", "description": "Fish & crab", "amount": 56.29, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu5ng1nwg7vf", "date": "2026-08-19", "category": "Groceries", "description": "Onions & spices", "amount": 24.23, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu5xr15y1v49", "date": "2026-08-19", "category": "Food & Dining", "description": "Hungry jacks", "amount": 5.5, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu6ae267u0i9", "date": "2026-08-19", "category": "Utilities", "description": "Electricity bill", "amount": 272.06, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu6mkwb8xu6i", "date": "2026-08-19", "category": "Travel & Holidays", "description": "Disel & vaccum", "amount": 139, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu6yeniwgqlv", "date": "2026-08-19", "category": "Food & Dining", "description": "Spinach croissant", "amount": 4.45, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu7bnl21mcsg", "date": "2026-08-19", "category": "Groceries", "description": "Woolworths watermelon", "amount": 2, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu7y70re71zm", "date": "2026-08-19", "category": "Other", "description": "Divya driving test", "amount": 72, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu87prbjj53k", "date": "2026-08-19", "category": "Housing & Rent", "description": "Rent", "amount": 900, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu8hxzr4pbzh", "date": "2026-08-19", "category": "Food & Dining", "description": "Sainath & me", "amount": 30.33, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu8uqgwp638n", "date": "2026-08-19", "category": "Insurance", "description": "NIB private health insurance", "amount": 88, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mszu9arco88wg0", "date": "2026-08-19", "category": "India", "description": "Chitti", "amount": 1000, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszu9k2dh3ia3r", "date": "2026-08-19", "category": "Transport", "description": "Train", "amount": 12.4, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszu9sw22vad41", "date": "2026-08-19", "category": "Food & Dining", "description": "Egg pie", "amount": 3.95, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszua05oln20fe", "date": "2026-08-19", "category": "Transport", "description": "Train", "amount": 6, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszua88v6gzmg1", "date": "2026-08-19", "category": "Food & Dining", "description": "Donut", "amount": 12, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuaez9t7wq81", "date": "2026-08-19", "category": "Food & Dining", "description": "Coffee - Ravi and Hung", "amount": 8.53, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszual6pzpnqwf", "date": "2026-08-19", "category": "Food & Dining", "description": "Coles", "amount": 1.89, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuav5d3td2t9", "date": "2026-08-19", "category": "Personal Care", "description": "Pads and mandarins", "amount": 14.5, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszub1v42kryfx", "date": "2026-08-19", "category": "Food & Dining", "description": "Sushi", "amount": 6, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszub6f63aiwns", "date": "2026-08-19", "category": "Food & Dining", "description": "Md soft serve", "amount": 1, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszubd583jerxp", "date": "2026-08-19", "category": "Food & Dining", "description": "Donut", "amount": 2.75, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszubk3qypxx00", "date": "2026-08-19", "category": "Subscriptions", "description": "Fucking Door Dash", "amount": 10, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszubu4xdxzbpc", "date": "2026-08-19", "category": "Groceries", "description": "Vegetables", "amount": 46.5, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuc17x1j2318", "date": "2026-08-19", "category": "Groceries", "description": "Chicken", "amount": 9.5, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuc9muvjlmu7", "date": "2026-08-19", "category": "Food & Dining", "description": "Coles coffee", "amount": 5.25, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszucglob7skms", "date": "2026-08-19", "category": "Food & Dining", "description": "Coffee", "amount": 5.03, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszucolzy1aego", "date": "2026-08-19", "category": "Utilities", "description": "Hyderabad TV", "amount": 11.99, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszud27lmawm5d", "date": "2026-08-19", "category": "India", "description": "Chitti", "amount": 1000, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszud7z9shidn0", "date": "2026-08-19", "category": "India", "description": "Chitti charges", "amount": 2, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszudgv2paphab", "date": "2026-08-19", "category": "Transport", "description": "Opal", "amount": 80, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszue5lk9vrq9w", "date": "2026-08-19", "category": "Shopping", "description": "Gold", "amount": 1150.6, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuee9uyvram0", "date": "2026-08-19", "category": "Food & Dining", "description": "Chicken roll", "amount": 4.5, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuekweik5q7c", "date": "2026-08-19", "category": "Food & Dining", "description": "Chocolate", "amount": 2.59, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mszuesn4cfy3mi", "date": "2026-08-19", "category": "Subscriptions", "description": "Claude Ai", "amount": 34, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt0u8qwxxykk1r", "date": "2026-08-20", "category": "Food & Dining", "description": "Coles", "amount": 3.15, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt0vdg8bpqbjty", "date": "2026-01-17", "category": "India", "description": "Jaunary", "amount": 1000, "spentBy": "Divya", "audInrRateAtEntry": 61.15}, {"id": "mt3z4q2dwatxul", "date": "2026-08-22", "category": "Utilities", "description": "Internet % Phone Bill", "amount": 124, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mt3z59tq1ml7rf", "date": "2026-08-22", "category": "Food & Dining", "description": "Age 3 Sandwich", "amount": 22, "spentBy": "Ram", "audInrRateAtEntry": 67.86}, {"id": "mt3z6qpdskr973", "date": "2026-08-22", "category": "Food & Dining", "description": "Coles", "amount": 3.13, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt3z73p6aj2nml", "date": "2026-08-22", "category": "Food & Dining", "description": "coles", "amount": 2.72, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt3z7gg7qygq37", "date": "2026-08-22", "category": "Food & Dining", "description": "coles", "amount": 5.19, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt3z82ta4zxbds", "date": "2026-08-22", "category": "Travel & Holidays", "description": "Parking age 3", "amount": 7, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt3z8loyo5ukec", "date": "2026-08-22", "category": "Food & Dining", "description": "age 3 fried food", "amount": 12.65, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt3z8yd053znml", "date": "2026-08-22", "category": "Food & Dining", "description": "age 3 macha", "amount": 11.88, "spentBy": "Divya", "audInrRateAtEntry": 67.86}, {"id": "mt3z989dznnr90", "date": "2026-08-22", "category": "Food & Dining", "description": "sushi", "amount": 5.2, "spentBy": "Divya", "audInrRateAtEntry": 67.86}],
+      shifts: [{"id": "mszup85uxdt65t", "date": "2026-08-01", "startTime": "17:00", "endTime": "20:45", "deliveries": 1}, {"id": "mszupxqn9wypg5", "date": "2026-08-02", "startTime": "16:00", "endTime": "20:30", "deliveries": 6}, {"id": "mszuxzo92rnus6", "date": "2026-08-03", "startTime": "17:00", "endTime": "20:45", "deliveries": 0}, {"id": "mszuydgtazaf5i", "date": "2026-08-07", "startTime": "17:00", "endTime": "20:45", "deliveries": 5}, {"id": "mszuyruhu73leg", "date": "2026-08-08", "startTime": "16:00", "endTime": "20:45", "deliveries": 3}, {"id": "mszuz5pvat7hbd", "date": "2026-08-09", "startTime": "16:00", "endTime": "20:30", "deliveries": 1}, {"id": "mszuzitc4bqht5", "date": "2026-08-10", "startTime": "17:00", "endTime": "20:45", "deliveries": 1}, {"id": "mszuzvmutg5k0n", "date": "2026-08-14", "startTime": "17:00", "endTime": "20:45", "deliveries": 4}, {"id": "mszv0eu4w8upz8", "date": "2026-08-15", "startTime": "16:00", "endTime": "20:45", "deliveries": 5}, {"id": "mszv0ws0c96syu", "date": "2026-08-16", "startTime": "16:00", "endTime": "20:30", "deliveries": 1}, {"id": "mszv1b232jb33d", "date": "2026-08-17", "startTime": "17:00", "endTime": "20:45", "deliveries": 1}, {"id": "mt3zz40qfznxl6", "date": "2026-08-21", "startTime": "17:00", "endTime": "20:45", "deliveries": 2}],
+      loanDetails: {"termMonths": 48, "interestTotal": 17581.56, "totalRepayment": 53596.56, "monthlyMinimum": 1117},
       loanEntries: [],
-      incomeEntries: [],
+      incomeEntries: [{"id": "mt3z15dlseibyy", "date": "2026-08-14", "amount": 1764.44, "person": "Divya", "note": "Salary"}, {"id": "mt3z1pn7tk0m79", "date": "2026-08-14", "amount": 2529, "person": "Ram", "note": "Salary"}],
       chittis: fixedChittis(),
-      chittiPayments: [
-        {id: "mt0vxpf0kklbuo", chittiId: "margadarshi", date: "2026-02-06", amount: 100000},
-        {id: "mt0vxyq9ftgtsh", chittiId: "margadarshi", date: "2026-04-11", amount: 65000},
-        {id: "mt0vy7uu7h3x0z", chittiId: "margadarshi", date: "2026-05-16", amount: 100000},
-        {id: "mt0vyf6fous56n", chittiId: "margadarshi", date: "2026-06-11", amount: 65000},
-        {id: "mt0vynfwjtwmfq", chittiId: "margadarshi", date: "2026-07-09", amount: 65000},
-        {id: "mt0vyw0a58vged", chittiId: "margadarshi", date: "2026-08-07", amount: 65000},
-        {id: "mt0w1stb3gji8y", chittiId: "small1", date: "2026-02-11", amount: 14000},
-        {id: "mt0w21dnb395pi", chittiId: "small1", date: "2026-03-10", amount: 14240},
-        {id: "mt0w29vy7zobjh", chittiId: "small1", date: "2026-04-14", amount: 14480},
-        {id: "mt0w2j2vfvu5uh", chittiId: "small1", date: "2026-05-14", amount: 14720},
-        {id: "mt0w46opkswb25", chittiId: "small2", date: "2026-02-11", amount: 14000},
-        {id: "mt0w4fofdqzlh1", chittiId: "small2", date: "2026-03-10", amount: 14240},
-        {id: "mt0w4nquogs18w", chittiId: "small2", date: "2026-04-14", amount: 14480},
-        {id: "mt0w4xn892qv6e", chittiId: "small2", date: "2026-05-14", amount: 14720},
-        {id: "mt0w59t2mxf6zu", chittiId: "small2", date: "2026-06-11", amount: 15000},
-        {id: "mt0w5lnokrkr9h", chittiId: "small2", date: "2026-07-13", amount: 15240},
-        {id: "mt0w5w07o9pqsb", chittiId: "small2", date: "2026-08-15", amount: 15480},
-        {id: "mt0w8e0cwalsm7", chittiId: "small1", date: "2026-06-11", amount: 15000},
-        {id: "mt0w8l9kzgqkgq", chittiId: "small1", date: "2026-07-13", amount: 15240},
-        {id: "mt0w8t5a3lwbaj", chittiId: "small1", date: "2026-08-15", amount: 15480}
-      ],
+      chittiPayments: [{"id": "mt0vxpf0kklbuo", "chittiId": "margadarshi", "date": "2026-02-06", "amount": 100000}, {"id": "mt0vxyq9ftgtsh", "chittiId": "margadarshi", "date": "2026-04-11", "amount": 65000}, {"id": "mt0vy7uu7h3x0z", "chittiId": "margadarshi", "date": "2026-05-16", "amount": 100000}, {"id": "mt0vyf6fous56n", "chittiId": "margadarshi", "date": "2026-06-11", "amount": 65000}, {"id": "mt0vynfwjtwmfq", "chittiId": "margadarshi", "date": "2026-07-09", "amount": 65000}, {"id": "mt0vyw0a58vged", "chittiId": "margadarshi", "date": "2026-08-07", "amount": 65000}, {"id": "mt0w1stb3gji8y", "chittiId": "small1", "date": "2026-02-11", "amount": 14000}, {"id": "mt0w21dnb395pi", "chittiId": "small1", "date": "2026-03-10", "amount": 14240}, {"id": "mt0w29vy7zobjh", "chittiId": "small1", "date": "2026-04-14", "amount": 14480}, {"id": "mt0w2j2vfvu5uh", "chittiId": "small1", "date": "2026-05-14", "amount": 14720}, {"id": "mt0w46opkswb25", "chittiId": "small2", "date": "2026-02-11", "amount": 14000}, {"id": "mt0w4fofdqzlh1", "chittiId": "small2", "date": "2026-03-10", "amount": 14240}, {"id": "mt0w4nquogs18w", "chittiId": "small2", "date": "2026-04-14", "amount": 14480}, {"id": "mt0w4xn892qv6e", "chittiId": "small2", "date": "2026-05-14", "amount": 14720}, {"id": "mt0w59t2mxf6zu", "chittiId": "small2", "date": "2026-06-11", "amount": 15000}, {"id": "mt0w5lnokrkr9h", "chittiId": "small2", "date": "2026-07-13", "amount": 15240}, {"id": "mt0w5w07o9pqsb", "chittiId": "small2", "date": "2026-08-15", "amount": 15480}, {"id": "mt0w8e0cwalsm7", "chittiId": "small1", "date": "2026-06-11", "amount": 15000}, {"id": "mt0w8l9kzgqkgq", "chittiId": "small1", "date": "2026-07-13", "amount": 15240}, {"id": "mt0w8t5a3lwbaj", "chittiId": "small1", "date": "2026-08-15", "amount": 15480}],
       chittiPayouts: [],
-      goldTargets: [],
+      goldTargets: [{"id": "mt3zewjzvq5ojn", "amount": 15000, "createdDate": "2026-08-22", "achieved": false, "achievedDate": null}],
       goldEntries: [],
-      paymentsReceived: [
-        {id: "mszuu5ibs35821", date: "2026-08-17", amount: 352, note: ""},
-        {id: "mszuuiucqa7xx2", date: "2026-08-10", amount: 352, note: ""},
-        {id: "mszuuon39fz17z", date: "2026-08-03", amount: 200, note: ""}
-      ],
+      paymentsReceived: [{"id": "mszuu5ibs35821", "date": "2026-08-17", "amount": 352, "note": ""}, {"id": "mszuuiucqa7xx2", "date": "2026-08-10", "amount": 352, "note": ""}, {"id": "mszuuon39fz17z", "date": "2026-08-03", "amount": 200, "note": ""}],
       petrolShifts: [],
       petrolPaymentsReceived: [],
-      indiaTransfers: [
-        {id: "mt0vrbh73a3y5s", date: "2026-01-17", description: "Chit fund", amount: 61154, spentBy: "Divya"},
-        {id: "mt0vrplih1f4ph", date: "2026-01-30", description: "Chitfund", amount: 64300, spentBy: "Divya"},
-        {id: "mt0vs9bvpxoolf", date: "2025-02-16", description: "Chitfund", amount: 65500, spentBy: "Divya"},
-        {id: "mt0vso7nh8ii08", date: "2025-02-27", description: "Chit fund", amount: 65754, spentBy: "Divya"},
-        {id: "mt0vti4urabaiu", date: "2025-03-13", description: "Chitfund", amount: 65200, spentBy: "Divya"},
-        {id: "mt0vtub3tv3nd2", date: "2025-03-27", description: "Chitfund", amount: 65000, spentBy: "Divya"},
-        {id: "mt0vu9d8soxeyu", date: "2025-04-10", description: "Chitfund", amount: 65300, spentBy: "Divya"},
-        {id: "mt0vultib46j6t", date: "2025-04-24", description: "Chitfund", amount: 67200, spentBy: "Divya"},
-        {id: "mt0vuwa6luzap0", date: "2025-05-11", description: "Chitfund", amount: 68500, spentBy: "Divya"},
-        {id: "mt0vv62agau0dn", date: "2025-05-22", description: "Chit Fund", amount: 68600, spentBy: "Divya"},
-        {id: "mt0vvihf4nx26y", date: "2025-06-05", description: "Chitfund", amount: 68360, spentBy: "Divya"},
-        {id: "mt0vvtmqhiwhhm", date: "2025-06-22", description: "Chitfund", amount: 66000, spentBy: "Divya"},
-        {id: "mt0vw6eeoyb674", date: "2025-07-03", description: "Chitfund", amount: 66000, spentBy: "Divya"},
-        {id: "mt0vweovx3djpo", date: "2025-07-17", description: "Chitfund", amount: 67600, spentBy: "Divya"},
-        {id: "mt0vwpq2ntb17x", date: "2025-07-31", description: "Chitfund", amount: 66500, spentBy: "Divya"},
-        {id: "mt0vx10mui7rq0", date: "2025-08-14", description: "Chitfund", amount: 67500, spentBy: "Divya"}
-      ]
+      indiaTransfers: [{"id": "mt0vrbh73a3y5s", "date": "2026-01-17", "description": "Chit fund", "amount": 61154, "spentBy": "Divya"}, {"id": "mt0vrplih1f4ph", "date": "2026-01-30", "description": "Chitfund", "amount": 64300, "spentBy": "Divya"}, {"id": "mt0vs9bvpxoolf", "date": "2025-02-16", "description": "Chitfund", "amount": 65500, "spentBy": "Divya"}, {"id": "mt0vso7nh8ii08", "date": "2025-02-27", "description": "Chit fund", "amount": 65754, "spentBy": "Divya"}, {"id": "mt0vti4urabaiu", "date": "2025-03-13", "description": "Chitfund", "amount": 65200, "spentBy": "Divya"}, {"id": "mt0vtub3tv3nd2", "date": "2025-03-27", "description": "Chitfund", "amount": 65000, "spentBy": "Divya"}, {"id": "mt0vu9d8soxeyu", "date": "2025-04-10", "description": "Chitfund", "amount": 65300, "spentBy": "Divya"}, {"id": "mt0vultib46j6t", "date": "2025-04-24", "description": "Chitfund", "amount": 67200, "spentBy": "Divya"}, {"id": "mt0vuwa6luzap0", "date": "2025-05-11", "description": "Chitfund", "amount": 68500, "spentBy": "Divya"}, {"id": "mt0vv62agau0dn", "date": "2025-05-22", "description": "Chit Fund", "amount": 68600, "spentBy": "Divya"}, {"id": "mt0vvihf4nx26y", "date": "2025-06-05", "description": "Chitfund", "amount": 68360, "spentBy": "Divya"}, {"id": "mt0vvtmqhiwhhm", "date": "2025-06-22", "description": "Chitfund", "amount": 66000, "spentBy": "Divya"}, {"id": "mt0vw6eeoyb674", "date": "2025-07-03", "description": "Chitfund", "amount": 66000, "spentBy": "Divya"}, {"id": "mt0vweovx3djpo", "date": "2025-07-17", "description": "Chitfund", "amount": 67600, "spentBy": "Divya"}, {"id": "mt0vwpq2ntb17x", "date": "2025-07-31", "description": "Chitfund", "amount": 66500, "spentBy": "Divya"}, {"id": "mt0vx10mui7rq0", "date": "2025-08-14", "description": "Chitfund", "amount": 67500, "spentBy": "Divya"}]
     };
   }
 
@@ -2001,8 +1910,8 @@
           '<div class="hint" style="margin:0 0 12px;">'+job.rateHint+'</div>' +
           '<form class="inline-form" id="shiftForm-'+job.key+'">' +
             '<div class="field"><label>Date</label><input type="date" name="date" value="'+todayISO()+'" required></div>' +
-            '<div class="field"><label>Start time</label><input type="time" name="startTime" required></div>' +
-            '<div class="field"><label>End time</label><input type="time" name="endTime" required></div>' +
+            timeSelectGroup('Start time','start') +
+            timeSelectGroup('End time','end') +
             deliveriesField +
             '<button type="submit" class="primary">Add shift</button>' +
           '</form>' +
@@ -2074,11 +1983,15 @@
     document.getElementById("shiftForm-"+job.key).addEventListener("submit", function(e){
       e.preventDefault();
       var f = e.target;
-      var entry = { id: uid(), date: f.date.value, startTime: f.startTime.value, endTime: f.endTime.value };
+      var startTime = combineTimeParts(f.startHour.value, f.startMinute.value, f.startAmPm.value);
+      var endTime = combineTimeParts(f.endHour.value, f.endMinute.value, f.endAmPm.value);
+      var entry = { id: uid(), date: f.date.value, startTime: startTime, endTime: endTime };
       if(job.hasDeliveries) entry.deliveries = parseInt(f.deliveries.value, 10) || 0;
       state[job.shiftsField].push(entry);
       state.isSample = false;
-      f.startTime.value=""; f.endTime.value=""; if(job.hasDeliveries) f.deliveries.value="";
+      f.startHour.selectedIndex = 0; f.startMinute.selectedIndex = 0; f.startAmPm.selectedIndex = 0;
+      f.endHour.selectedIndex = 0; f.endMinute.selectedIndex = 0; f.endAmPm.selectedIndex = 0;
+      if(job.hasDeliveries) f.deliveries.value="";
       save(); renderAll();
     });
 
