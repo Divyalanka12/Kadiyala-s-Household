@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kadiyala's Household</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a78d6">
+<link rel="icon" href="icon192.png" type="image/png">
+<link rel="apple-touch-icon" href="appletouchicon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Household">
 <style>
   :root {
     color-scheme: light;
@@ -2488,6 +2496,18 @@
 
   renderAll();
 })();
+</script>
+<script>
+  // Register the PWA service worker so the app can be "Added to Home Screen"
+  // like a real app. Registration only ever touches the app shell files
+  // (index.html/manifest/icons) — it never intercepts Firebase or CDN traffic.
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(err){
+        console.error("Service worker registration failed:", err);
+      });
+    });
+  }
 </script>
 </body>
 </html>
